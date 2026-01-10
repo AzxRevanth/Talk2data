@@ -1,0 +1,19 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.env/
+.env.*
+
+# ChromaDB persistent storage
+chroma_db/
+
+# OS / editor files
+.DS_Store
+.vscode/
+.idea/
+
+# Logs (if you add later)
+*.log

@@ -1,0 +1,11 @@
+streamlit
+langchain
+langchain-openai
+chromadb
+sentence-transformers
+psycopg2-binary
+pandas
+numpy
+python-dotenv
+pypdf
+langchain-text-splitters
