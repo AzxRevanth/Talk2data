@@ -9,3 +9,4 @@ numpy
 python-dotenv
 pypdf
 langchain-text-splitters
+langchain-community

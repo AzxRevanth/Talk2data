@@ -31,7 +31,7 @@ if 'agent_response' not in st.session_state:
 for i in range(len(st.session_state.user_input)):
     with st.chat_message("user"):
         st.write(st.session_state.user_input[i])
-    with st.chat_message("agent"):
+    with st.chat_message("assistant"):
         st.write(st.session_state.agent_response[i])
 
 def get_text():
@@ -41,7 +41,7 @@ def get_text():
 query = get_text()
 
 if query:
-    st.session_state.query.append(query)
+    st.session_state.user_input.append(query)
 
     with st.chat_message("user"):
         st.write(query)
@@ -49,5 +49,5 @@ if query:
         response = answer_query(query)
     
     st.session_state.agent_response.append(response)
-    with st.chat_message("agent"):
+    with st.chat_message("assistant"):
         st.write(response)

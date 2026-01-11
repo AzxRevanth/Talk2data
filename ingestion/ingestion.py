@@ -2,11 +2,16 @@ import psycopg2
 import pandas as pd
 import numpy as np
 import os 
-from dotenv import load_dotenv
 import chromadb
 
+from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+ROOT_DIR = Path(__file__).resolve().parents[1]
+ENV_PATH = ROOT_DIR / ".env"
+
+load_dotenv(dotenv_path=ENV_PATH)
+
 conn = psycopg2.connect(
     host=os.getenv("PG_HOST"),
     database=os.getenv("PG_DB"),
