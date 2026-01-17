@@ -27,35 +27,6 @@ conn.close()
 
 # print(df.head())
 
-sql_data = df.apply(
-    lambda row: (
-        f"Employee ID no. {row['employeenumber']} works in the {row['department']} department. "
-        f"Education field is {row['educationfield']}. "
-        f"Gender is {row['gender']}. "
-        f"Job role is {row['jobrole']}. "
-        f"Performance rating is {row['performancerating']}."
-    ),
-    axis=1
-).tolist()
-
-metadatas = df[['employeenumber']].to_dict(orient='records')
-for i in metadatas:
-    i["source"] = "postgresql"
-    i["database"] = "talk2data"
-    i["table"] = "employee_attrition"
-
-ids = df["employeenumber"].astype(str).tolist()
-
-# CHROMADB FOR SQL DATA
-client = chromadb.PersistentClient(path="./chroma_db") 
-collection = client.get_or_create_collection("employee_data")
-
-collection.upsert(
-    documents=sql_data,
-    metadatas=metadatas,
-    ids=ids
-)
-
 # ----------------------------------------------------------------------------------------------------
 # This is for PDF ingestion, it converts the pdf to txt for chromadb ingestion, you can use the txt directly if you want. i am using a .txt file so i dont have it keep running the code.
  
@@ -75,8 +46,13 @@ collection.upsert(
 #     f.write(full_text)
 
 # CHROMADB FOR PDFs
+client = chromadb.PersistentClient(path="./chroma_db") 
+collection = client.get_or_create_collection("employee_data")
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-with open("data/employee_handbook.txt", "r", encoding="utf-8") as f:
+txt_path = ROOT_DIR / "data" / "employee_handbook.txt"
+
+with open(txt_path, "r", encoding="utf-8") as f:
     full_text = f.read()
 
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=20)

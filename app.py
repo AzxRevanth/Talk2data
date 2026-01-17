@@ -13,13 +13,28 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-openai_api_key = st.sidebar.text_input("OpenAI API Key", type="password")
-st.sidebar.caption("Please enter your OpenAI API key to proceed.")
-if not openai_api_key or not openai_api_key.startswith("sk-"):
-    st.warning("Please enter a valid OpenAI API key to proceed.")
-    st.stop()
+mode = st.sidebar.radio(
+    "LLM Mode",
+    options=["Local (Ollama)", "OpenAI"],
+    index=0
+)
 
-os.environ["OPENAI_API_KEY"] = openai_api_key
+if mode == "OpenAI":
+    openai_api_key = st.sidebar.text_input(
+        "OpenAI API Key",
+        type="password"
+    )
+    st.sidebar.caption("Required only when using OpenAI models.")
+
+    if not openai_api_key or not openai_api_key.startswith("sk-"):
+        st.warning("Please enter a valid OpenAI API key to continue.")
+        st.stop()
+
+    os.environ["OPENAI_API_KEY"] = openai_api_key
+
+else:
+    st.sidebar.success("Running in local mode using Ollama")
+
 
 from main import answer_query
 
@@ -28,11 +43,14 @@ if 'user_input' not in st.session_state:
 if 'agent_response' not in st.session_state:
     st.session_state['agent_response'] = []
 
-for i in range(len(st.session_state.user_input)):
+for user_msg, agent_msg in zip(
+    st.session_state.user_input,
+    st.session_state.agent_response
+):
     with st.chat_message("user"):
-        st.write(st.session_state.user_input[i])
+        st.write(user_msg)
     with st.chat_message("assistant"):
-        st.write(st.session_state.agent_response[i])
+        st.write(agent_msg)
 
 def get_text():
     input_text = st.chat_input("You: ", key="input")

@@ -10,3 +10,5 @@ python-dotenv
 pypdf
 langchain-text-splitters
 langchain-community
+pandasai
+langchain_ollama 
