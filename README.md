@@ -1,68 +1,72 @@
-# Talk2Data (v2)
+# Talk2Data (v3)
 
-Talk2Data is an enterprise-style AI assistant that allows users to query internal company knowledge using natural language.  
-Version 1 focuses on Retrieval Augmented Generation (RAG) over unstructured and semi-structured enterprise data, delivered through a ChatGPT-like interface.
+Talk2Data is an enterprise-style AI assistant that allows users to query internal company knowledge using natural language. 
+It combines Retrieval Augmented Generation (RAG), SQL-based analytics, and visualization in a ChatGPT-like interface.
 
-The project is designed to reflect how real internal knowledge assistants are built in organizations, with clear separation between ingestion, retrieval, reasoning, and user interaction.
+This project is designed to reflect how real-world internal AI assistants are architected in organizations.
 
----
-
-## About the Project
-
-**Version 2 builds on v1** and adds support for querying structured enterprise data while maintaining strict grounding and safety guarantees.
-
-- Company policies
-- Employee handbook
-- Enterprise documentation
-- Context grounded answers using RAG
+The system is built with a modular architecture, separating ingestion, retrieval, reasoning, analytics, and the user interface to ensure reliability, scalability, and grounded responses. It combines document retrieval, structured data querying, and analytics in a single ChatGPT-like interface, reflecting how real internal AI assistants are designed in production environments.
 
 ---
 
-## What’s New in v2
+## What’s New in v3
+Version 3 introduces a natural language analytics module that allows users to ask analytical questions and generate visual insights directly from structured enterprise data.
 
-- SQL-based querying over structured enterprise data
-- Multi-tool ReAct agent that decides between RAG and SQL tools
-- Read-only SQL enforcement through prompt and tooling
-- Improved error handling and environment configuration
-- Stable database connectivity using environment variables
+New additions include:
+
+- Natural Language Queries (NLQ) over PostgreSQL data
+- Automated analytics using PandasAI on Pandas DataFrames
+- On-demand visualizations rendered directly in the Streamlit UI
+- Intelligent schema based routing between document retrieval, SQL analytics, and plotting
+- Improved stability and error handling for long-running analytical tasks
 - Bug fixes across ingestion, retrieval, and UI layers
+- Featuring both a hosted (OpenAI) mode and Local (Ollama) Mode.
 
 ## Key Features
 
 - ChatGPT-style conversational interface built with Streamlit
-- Retrieval Augmented Generation (RAG) pipeline
-- Semantic search over enterprise documents using ChromaDB
-- Persistent vector storage for fast repeated queries
-- Metadata-aware retrieval
-- Grounded responses with clear source attribution
-- Hallucination control through strict prompt rules
+- Retrieval Augmented Generation (RAG) pipeline for enterprise knowledge access
+- Semantic search over internal documents using ChromaDB
+- Metadata-aware retrieval with source tracking
+- Hallucination control through strict prompt and routing rules
+- Intelligent query routing between document retrieval and analytics workflows
+- Natural Language Queries (NLQ) over structured PostgreSQL data
+- Automated analytics using PandasAI on Pandas DataFrames
+- On-demand data visualizations rendered directly in the UI
+- Support for both local (Ollama) and hosted (OpenAI) LLMs
+- Modular architecture separating ingestion, retrieval, reasoning, analytics, and UI
+- Safe, read-only data access for analytical queries
+- Robust error handling and graceful fallbacks when data is unavailable
 
 ---
 
-## Architecture Overview
-  
-![Designs(1)](https://github.com/user-attachments/assets/a4b46bbe-f90a-44cd-ae83-29dd6a2f8d3a)
+## Architecture Overview & App Images
 
-- Raw documents remain the source of truth
-- ChromaDB stores embeddings and metadata only
-- The LLM never directly accesses documents or files
-- Retrieval and SQL queries happen before generation
-- Structured data and unstructured data are handled separately
-- Fail safely when information is unavailable
+![Designs](https://github.com/user-attachments/assets/e668d1f1-09d7-49cf-8687-a8d06a3a31ab)
+
+<img width="1600" height="899" alt="image" src="https://github.com/user-attachments/assets/f93484ab-b4c6-4368-b7fd-38156b322b1c" />
+
+<img width="1600" height="899" alt="image" src="https://github.com/user-attachments/assets/0866ce2c-5a2e-48ec-b2f3-4290d20ed880" />
+
+<img width="1600" height="899" alt="image" src="https://github.com/user-attachments/assets/c11cf459-aebf-4160-b0b7-958a225fc366" />
 
 ---
 
 ## Tech Stack
 
-- **Language**: Python
-- **LLM**: OpenAI (ChatOpenAI)
-- **Framework**: LangChain
-- **Vector Database**: ChromaDB
-- **Frontend**: Streamlit
-- **Document Parsing**: PyPDF
-- **Embeddings**: Sentence Transformers (via Chroma defaults)
-- **Database**: PostgreSQL
-- **ORM / DB Access**: SQLAlchemy
+- **Language**: Python  
+- **LLMs**: OpenAI (ChatOpenAI), Local LLMs via Ollama  
+- **Agent Framework**: LangChain   
+- **Vector Database**: ChromaDB 
+- **Embeddings**: Sentence Transformers  
+- **Frontend**: Streamlit  
+- **Document Parsing**: PyPDF  
+- **Analytics & NLQ**: PandasAI   
+- **Data Visualization**: Plotly  
+- **Database**: PostgreSQL  
+- **Database Access**: SQLAlchemy 
+- **Configuration Management**: Python-dotenv  
+- **Local Model Serving**: Ollama
 
 ---
 
@@ -88,14 +92,18 @@ The project is designed to reflect how real internal knowledge assistants are bu
 
 ## How Retrieval Works
 
-1. User submits a natural language question
-2. The agent classifies the intent
-3. The appropriate tool is selected:
-   - Retrieval tool for policies and documents
-   - SQL tools for numeric or analytical queries
-4. Retrieved data is passed to the LLM
-5. The LLM generates a concise, grounded response
-6. Source information is included when applicable
+1. User submits a natural language query through the chat interface  
+2. A query router classifies the intent (document lookup, analytics, or visualization)  
+3. The appropriate execution path is selected:
+   - Retrieval pipeline for policies and unstructured documents  
+   - SQL and analytics pipeline for structured data queries  
+   - Visualization pipeline for plot and trend requests  
+4. For document queries, relevant chunks are retrieved from ChromaDB using semantic similarity  
+5. For analytical queries, structured data is fetched from PostgreSQL and processed as a Pandas DataFrame  
+6. Natural language analytics and aggregations are performed when required  
+7. Visualizations are generated and rendered directly in the UI for plot requests  
+8. Retrieved or computed results are passed to the LLM for summarization when needed  
+9. The system returns a grounded response with source attribution or visual output as applicable  
 
 ---
 
@@ -130,14 +138,6 @@ This step builds the vector database.
 streamlit run app.py
 ```
 Open the local URL shown in the terminal.
-
----
-
-## Limitations (v2) -> Future Improvements
-
-- SQL results are returned as text (analytics and charts planned)
-- No role-based access control yet
-- No long-term conversational memory
 
 ---
 
