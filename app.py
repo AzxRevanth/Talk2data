@@ -1,5 +1,7 @@
 import streamlit as st
-import os 
+import os
+import plotly
+
 
 st.set_page_config(page_title="Talk2Data", page_icon=":robot")
 
@@ -19,12 +21,14 @@ mode = st.sidebar.radio(
     index=0
 )
 
+# Set environment variables before importing main
 if mode == "OpenAI":
+    os.environ["USE_LOCAL_LLM"] = "false"
+
     openai_api_key = st.sidebar.text_input(
         "OpenAI API Key",
         type="password"
     )
-    st.sidebar.caption("Required only when using OpenAI models.")
 
     if not openai_api_key or not openai_api_key.startswith("sk-"):
         st.warning("Please enter a valid OpenAI API key to continue.")
@@ -33,10 +37,15 @@ if mode == "OpenAI":
     os.environ["OPENAI_API_KEY"] = openai_api_key
 
 else:
+    os.environ["USE_LOCAL_LLM"] = "true"
     st.sidebar.success("Running in local mode using Ollama")
 
-
-from main import answer_query
+# Import after setting environment variables
+try:
+    from main import answer_query
+except Exception as e:
+    st.error(f"Error loading application: {e}")
+    st.stop()
 
 if 'user_input' not in st.session_state:
     st.session_state['user_input'] = []
@@ -63,9 +72,23 @@ if query:
 
     with st.chat_message("user"):
         st.write(query)
+    
     with st.spinner("Thinking..."):
-        response = answer_query(query)
+        try:
+            response = answer_query(query)
+        except Exception as e:
+            response = f"Error processing query: {e}"
     
     st.session_state.agent_response.append(response)
     with st.chat_message("assistant"):
-        st.write(response)
+        if isinstance(response, dict):
+            if response.get("type") == "image":
+                st.image(response["path"], use_column_width=True)
+            
+            elif response.get("type") == "plot":
+                st.plotly_chart(response["figure"], use_container_width=True)
+        
+        elif isinstance(response, dict):
+            st.write(response["content"])
+        else:
+            st.write(response)

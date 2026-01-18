@@ -1,24 +1,20 @@
-from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import chromadb
-from langchain.agents import create_agent
-from langchain.tools import tool
-from langchain_community.agent_toolkits import SQLDatabaseToolkit
-from langchain_community.tools.sql_database.tool import QuerySQLDataBaseTool
-from langchain_community.utilities import SQLDatabase
+
+from analytics_agent import analytics_agent
 from dotenv import load_dotenv
 import os
 load_dotenv()
 
 # LLM
-USE_LOCAL_LLM = True
+USE_LOCAL_LLM = os.getenv("USE_LOCAL_LLM", "true").lower() == "true"
 
 if USE_LOCAL_LLM:
     from langchain_ollama import ChatOllama
     llm = ChatOllama(model="mistral", temperature=0.2)
 else:
     from langchain_openai import ChatOpenAI
-    llm = ChatOpenAI(model="gpt-4.1-nano")
+    llm = ChatOpenAI(model="gpt-4o-mini")
 
 # PROMPTS
 
@@ -44,67 +40,107 @@ Retrieved Content:
 
 Question:
 {question}
-"""
-)
 
-SQL_GENERATION_PROMPT = ChatPromptTemplate.from_template(
-    """
-You are an enterprise data analyst.
-
-Generate a READ ONLY SQL query to answer the question.
-Rules:
-- SELECT statements only
-- No data modification
-- Use existing tables only
-- Do not add explanations
-- NEVER modify data.
-- NEVER use INSERT, UPDATE, DELETE, DROP, or ALTER.
-
-Question:
-{question}
-"""
-)
-
-SQL_ANSWER_PROMPT = ChatPromptTemplate.from_template(
-    """
-You are an enterprise knowledge assistant.
-
-Answer the question using ONLY the SQL results below.
-Do not infer or guess anything beyond the data.
-
-SQL Result:
-{result}
-
-Question:
-{question}
+In the end, mention the citations and metadata used to answer the question. If no citation or metadata is present, DONT mention anything, leave the answer as is. 
 """
 )
 
 # Router
-def is_sql_question(query: str) -> bool:
-    sql_keywords = [
-        "count", "how many", "average", "avg",
-        "total", "sum", "percentage", "number of"
-    ]
-    return any(k in query.lower() for k in sql_keywords)
+DB_COLUMNS = {
+    "age",
+    "attrition",
+    "businesstravel",
+    "dailyrate",
+    "department",
+    "distancefromhome",
+    "education",
+    "educationfield",
+    "employeecount",
+    "employeenumber",
+    "environmentsatisfaction",
+    "gender",
+    "hourlyrate",
+    "jobinvolvement",
+    "joblevel",
+    "jobrole",
+    "jobsatisfaction",
+    "maritalstatus",
+    "monthlyincome",
+    "monthlyrate",
+    "numcompaniesworked",
+    "over18",
+    "overtime",
+    "percentsalaryhike",
+    "performancerating",
+    "relationshipsatisfaction",
+    "standardhours",
+    "stockoptionlevel",
+    "totalworkingyears",
+    "trainingtimeslastyear",
+    "worklifebalance",
+    "yearsatcompany",
+    "yearsincurrentrole",
+    "yearssincelastpromotion",
+    "yearswithcurrmanager",
+}
+
+COLUMN_SYNONYMS = {
+    "departments": "department",
+    "dept": "department",
+    "salary": "monthlyincome",
+    "income": "monthlyincome",
+    "role": "jobrole",
+    "gender": "gender",
+    "age": "age",
+    "experience": "totalworkingyears",
+    "years of experience": "totalworkingyears",
+    "attrition rate": "attrition",
+}
+
+PLOT_KEYWORDS = {
+    "plot",
+    "graph",
+    "chart",
+    "visualize",
+    "visualisation",
+    "visualization",
+    "draw",
+    "show trend",
+    "line chart",
+    "bar chart",
+    "pie chart",
+}
+
+def route_query(query: str) -> str:
+    q = query.lower()
+    
+    # plot match
+    if any(k in q for k in PLOT_KEYWORDS):
+        return "analytics_plot"
+
+    # direct column match
+    for col in DB_COLUMNS:
+        if col in q:
+            return "analytics"
+
+    # synonym match
+    for syn in COLUMN_SYNONYMS:
+        if syn in q:
+            return "analytics"
+
+    # explicit analytics intent
+    if any(k in q for k in [
+        "count", "average", "mean", "total",
+        "distribution", "list", "unique",
+        "how many", "percentage", "breakdown"
+    ]):
+        return "analytics"
+
+    
+
+    return "rag"
 
 
-# Load SQL
-host=os.getenv("PG_HOST")
-database=os.getenv("PG_DB")
-user=os.getenv("PG_USER")
-password=os.getenv("PG_PASSWORD")
-port=5432
-
-db_uri = (
-    f"postgresql+psycopg2://{os.getenv('PG_USER')}:"
-    f"{os.getenv('PG_PASSWORD')}@"
-    f"{os.getenv('PG_HOST')}:5432/"
-    f"{os.getenv('PG_DB')}"
-)
-
-db = SQLDatabase.from_uri(db_uri)
-sql_tool = QuerySQLDataBaseTool(db=db)
 
 client = chromadb.PersistentClient(path="./ingestion/chroma_db")
 collection = client.get_collection("employee_data")
@@ -140,39 +176,42 @@ Sources:
 
 
 # Final Answer
+def answer_query(query: str):
+    route = route_query(query)
 
-def answer_query(query):
-    # ---------- SQL PATH ----------
-    if is_sql_question(query):
+    # 1. Analytics path (PandasAI / PostgreSQL)
+    if route == "analytics":
+        try:
+            result = analytics_agent(query, False)
+            return result["content"]
+        except Exception as e:
+            print(f"Analytics error: {e}")
+            return "Unable to compute analytics from enterprise data."
 
-        sql_query = llm.invoke(
-            SQL_GENERATION_PROMPT.format_messages(question=query)
-        ).content.strip()
-
-        if not sql_query.lower().startswith("select"):
-            return "Unable to retrieve numerical data for this query."
-
-        sql_result = sql_tool.invoke(sql_query)
-
-        return llm.invoke(
-            SQL_ANSWER_PROMPT.format_messages(
-                result=sql_result,
-                question=query
-            )
-        ).content
-
-    # ---------- RETRIEVAL PATH ----------
+    # 2. Plot Response
+    if route == "analytics_plot":
+        try:
+            plot_result = analytics_agent(query, True)
+            return plot_result
+        except Exception as e:
+            print(f"Plot error: {e}")
+            return "Unable to generate plot from enterprise data."
+    
+    # 3. RAG path (policies / handbook)
     context = retrieval_tool(query)
 
     if not context:
         return "No relevant information found in enterprise data."
 
-    return llm.invoke(
+    response = llm.invoke(
         RETRIEVAL_PROMPT.format_messages(
             context=context,
             question=query
         )
-    ).content
+    )
+
+    return response.content
+
 
 
 

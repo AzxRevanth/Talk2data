@@ -17,3 +17,7 @@ chroma_db/
 
 # Logs (if you add later)
 *.log
+
+# Generated charts
+charts/
+*.png

@@ -20,8 +20,17 @@ conn = psycopg2.connect(
     port=5432
 )
 
+engine = create_engine(
+    f"postgresql+psycopg2://{os.getenv('PG_USER')}:{os.getenv('PG_PASSWORD')}"
+    f"@{os.getenv('PG_HOST')}:{os.getenv('PG_PORT', '5432')}/{os.getenv('PG_DB')}",
+    pool_pre_ping=True,
+    pool_recycle=300
+)
+
 query = "SELECT employeenumber, department, educationfield, gender, jobrole, performancerating FROM employee_attrition"
-df = pd.read_sql(query, conn)
+# df = pd.read_sql(query, conn)
+with engine.connect() as connection:
+    df = pd.read_sql(text(query), connection)
 
 conn.close()
 
